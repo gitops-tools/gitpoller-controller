@@ -1,0 +1,20 @@
+# permissions for end users to view polledrepositories.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: polledrepository-viewer-role
+rules:
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories/status
+  verbs:
+  - get

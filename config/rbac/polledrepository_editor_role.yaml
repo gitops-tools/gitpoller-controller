@@ -1,0 +1,24 @@
+# permissions for end users to edit polledrepositories.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: polledrepository-editor-role
+rules:
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories/status
+  verbs:
+  - get

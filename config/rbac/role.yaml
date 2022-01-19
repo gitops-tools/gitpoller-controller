@@ -1,0 +1,42 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - polling.gitops.tools
+  resources:
+  - polledrepositories/status
+  verbs:
+  - get
+  - patch
+  - update

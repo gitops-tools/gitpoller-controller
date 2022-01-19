@@ -1,0 +1,11 @@
+apiVersion: polling.gitops.tools/v1alpha1
+kind: PolledRepository
+metadata:
+  name: polledrepository-sample
+  namespace: default
+spec:
+  url: https://github.com/gitops-tools/gitpoller-controller.git
+  ref: main
+  type: github
+  frequency: 5m
+  endpoint: http://el-polling-listener.polling-demo.svc.cluster.local:8080

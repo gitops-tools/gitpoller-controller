@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: polling-demo-sa
+  namespace: polling-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: polling-demo-clusterrole
+rules:
+  - apiGroups: 
+      - triggers.tekton.dev
+    resources: 
+      - eventlisteners
+      - triggerbindings
+      - triggertemplates
+      - triggers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+      - pipelineresources
+      - taskrun
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs: 
+      - impersonate
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    resourceNames: 
+      - tekton-triggers
+    verbs:
+      - use
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs: 
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: polling-demo-rolebinding
+  namespace: polling-demo 
+subjects:
+- kind: ServiceAccount
+  name: polling-demo-sa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: polling-demo-clusterrole
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: polling-triggertemplate
+  namespace: polling-demo
+spec:
+  params:
+    - name: sha
+      description: The git revision
+    - name: repoURL
+      description: The git repository url
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: polling-pipeline-run-
+        namespace: polling-demo
+      spec:
+        serviceAccountName: polling-demo-sa
+        params:
+        - name: sha
+          value: $(tt.params.sha)
+        - name: repoURL
+          value: $(tt.params.repoURL)
+        pipelineRef:
+          name: github-poll-pipeline
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: polling-pipeline-binding
+  namespace: polling-demo
+spec:
+  params:
+    - name: sha
+      value: $(body.commit.tree.sha)
+    - name: repoURL
+      value: "$(header.Ce-source)"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: polling-listener
+  namespace: polling-demo
+spec:
+  serviceAccountName: polling-demo-sa
+  triggers:
+    - bindings:
+      - ref: polling-pipeline-binding
+      template:
+        ref: polling-triggertemplate
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: github-poll-pipeline
+  namespace: polling-demo
+spec:
+  params:
+  - name: sha
+    type: string
+    description: "the SHA of the recently detected change"
+  - name: repoURL
+    type: string
+    description: "the cloneURL that the change was detected in"
+  tasks:
+  - name: echo-changes
+    params:
+    - name: sha
+      value: $(params.sha)
+    - name: repoURL
+      value: $(params.repoURL)
+    taskSpec:
+      params:
+      - name: sha
+        type: string
+      - name: repoURL
+        type: string
+      steps:
+      - name: echo
+        image: alpine
+        script: |
+          echo "SHA change detected $(inputs.params.sha)"
+          echo "                    $(inputs.params.repoURL)"

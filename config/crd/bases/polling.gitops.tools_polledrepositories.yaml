@@ -1,0 +1,136 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: polledrepositories.polling.gitops.tools
+spec:
+  group: polling.gitops.tools
+  names:
+    kind: PolledRepository
+    listKind: PolledRepositoryList
+    plural: polledrepositories
+    singular: polledrepository
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.url
+      name: URL
+      type: string
+    - jsonPath: .status.pollStatus.ref
+      name: Ref
+      type: string
+    - jsonPath: .status.pollStatus.sha
+      name: SHA
+      type: string
+    - jsonPath: .status.lastError
+      name: Error
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PolledRepository is the Schema for the polledrepositories API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PolledRepositorySpec defines the desired state of PolledRepository
+            properties:
+              auth:
+                description: Auth provides an optional secret for polling the repository.
+                properties:
+                  key:
+                    default: token
+                    type: string
+                  secretRef:
+                    description: This is a local reference to the named secret to
+                      fetch. This secret is expected to have a "token" key with a
+                      valid GitHub/GitLab auth token.
+                    properties:
+                      name:
+                        description: Name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: Namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                type: object
+              endpoint:
+                description: The notification URL, this is where CloudEvents are dispatched
+                  to for this repository.
+                pattern: ^(http|https)://
+                type: string
+              frequency:
+                default: 5m
+                description: Frequency is how often to poll this repository.
+                type: string
+              ref:
+                description: Ref is the branch or tag to poll within the repository.
+                type: string
+              type:
+                allOf:
+                - enum:
+                  - github
+                  - gitlab
+                - enum:
+                  - github
+                  - gitlab
+                description: Type is the protocol to use to access the repository.
+                type: string
+              url:
+                description: URL is the Git repository URL to poll.
+                pattern: ^https://
+                type: string
+            required:
+            - endpoint
+            - url
+            type: object
+          status:
+            description: PolledRepositoryStatus defines the observed state of PolledRepository
+            properties:
+              lastError:
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              pollStatus:
+                description: PollStatus represents the last polled state of the repo.
+                properties:
+                  etag:
+                    type: string
+                  ref:
+                    type: string
+                  sha:
+                    type: string
+                required:
+                - etag
+                - ref
+                - sha
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
