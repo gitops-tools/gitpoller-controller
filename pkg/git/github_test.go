@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,13 +17,12 @@ package git
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitpoller-controller/test"
 )
 
 const testToken = "test12345"
@@ -48,7 +47,7 @@ func TestNewGitHubPoller(t *testing.T) {
 
 func TestGitHubWithUnknownETag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", etag, mustReadFile(t, "testdata/github_commit.json"))
+	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, mustReadFile(t, "testdata/github_commit.json"))
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -71,7 +70,7 @@ func TestGitHubWithUnknownETag(t *testing.T) {
 
 func TestGitHubWithKnownTag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -91,7 +90,7 @@ func TestGitHubWithKnownTag(t *testing.T) {
 
 func TestGitHubWithNotFoundResponse(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -106,7 +105,7 @@ func TestGitHubWithNotFoundResponse(t *testing.T) {
 // respond with a 404.
 func TestGitHubWithBadAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "anotherToken")
 	g.endpoint = as.URL
@@ -120,7 +119,7 @@ func TestGitHubWithBadAuthentication(t *testing.T) {
 // With no auth-token, no auth header should be sent.
 func TestGitHubWithNoAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitHubAPIServer(t, "", "/repos/testing/repo/commits/master", etag, nil)
+	as := test.MakeGitHubAPIServer("", "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "")
 	g.endpoint = as.URL
@@ -129,38 +128,6 @@ func TestGitHubWithNoAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-// makeAPIServer is used during testing to create an HTTP server to return
-// fixtures if the request matches.
-func makeGitHubAPIServer(t *testing.T, authToken, wantPath, etag string, response []byte) *httptest.Server {
-	return httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != wantPath {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if authToken != "" {
-			if auth := r.Header.Get("Authorization"); auth != fmt.Sprintf("token %s", authToken) {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-		}
-		if auth := r.Header.Get("Authorization"); auth != "" && authToken == "" {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if etag == r.Header.Get("If-None-Match") {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
-		if r.Header.Get("Accept") != chitauriPreview {
-			w.WriteHeader(http.StatusUnsupportedMediaType)
-			return
-		}
-		w.Header().Set("ETag", etag)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
-	}))
 }
 
 func mustReadFile(t *testing.T, filename string) []byte {

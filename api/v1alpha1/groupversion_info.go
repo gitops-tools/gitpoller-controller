@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the polling v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=polling.gitops.tools
+// +kubebuilder:object:generate=true
+// +groupName=polling.gitops.tools
 package v1alpha1
 
 import (

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,6 +53,13 @@ func (m *MockPoller) AddMockResponse(repo string, in pollingv1alpha1.PollStatus,
 	k := mockKey(repo, in)
 	m.responses[k] = out
 	m.commits[k] = c
+}
+
+// Reset clears the setup.
+func (m *MockPoller) Reset() {
+	m.responses = make(map[string]pollingv1alpha1.PollStatus)
+	m.commits = make(map[string]Commit)
+	m.pollError = nil
 }
 
 // FailWithError configures the poller to return errors.

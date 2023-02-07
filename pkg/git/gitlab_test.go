@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,7 +46,7 @@ func TestNewGitLabPoller(t *testing.T) {
 
 func TestGitLabWithUnknownETag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, mustReadFile(t, "testdata/gitlab_commit.json"))
+	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, mustReadFile(t, "testdata/gitlab_commit.json"))
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -69,7 +69,7 @@ func TestGitLabWithUnknownETag(t *testing.T) {
 
 func TestGitLabWithKnownTag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
 	t.Cleanup(as.Close)
 
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
@@ -89,7 +89,7 @@ func TestGitLabWithKnownTag(t *testing.T) {
 
 func TestGitLabWithNotFoundResponse(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -104,7 +104,7 @@ func TestGitLabWithNotFoundResponse(t *testing.T) {
 // respond with a 404.
 func TestGitLabWithBadAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, "anotherToken")
 	g.endpoint = as.URL
@@ -118,7 +118,7 @@ func TestGitLabWithBadAuthentication(t *testing.T) {
 // With no auth-token, no auth header should be sent.
 func TestGitLabWithNoAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(t, "", "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer("", "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, "")
 	g.endpoint = as.URL
@@ -131,7 +131,7 @@ func TestGitLabWithNoAuthentication(t *testing.T) {
 
 // makeAPIServer is used during testing to create an HTTP server to return
 // fixtures if the request matches.
-func makeGitLabAPIServer(t *testing.T, authToken, wantPath, wantRef, etag string, response []byte) *httptest.Server {
+func makeGitLabAPIServer(authToken, wantPath, wantRef, etag string, response []byte) *httptest.Server {
 	return httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != wantPath {
 			w.WriteHeader(http.StatusNotFound)

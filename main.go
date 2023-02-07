@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -87,8 +88,9 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		EventDispatcher: cloudevents.Dispatch,
 		SecretGetter:    secrets.New(mgr.GetClient()),
-		PollerFactory: func(repo *pollingv1alpha1.PolledRepository, endpoint, token string) git.CommitPoller {
-			return controllers.MakeCommitPoller(repo, endpoint, token)
+		HTTPClient:      http.DefaultClient,
+		PollerFactory: func(cl *http.Client, repo *pollingv1alpha1.PolledRepository, endpoint, token string) git.CommitPoller {
+			return controllers.MakeCommitPoller(cl, repo, endpoint, token)
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PolledRepository")

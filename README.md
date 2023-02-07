@@ -55,6 +55,8 @@ Ce-Type: commit
 }
 ```
 
+The `Subject` of the event is the object reference, and the `Source` is the `spec.url` field from the PolledRepository.
+
 You can parse the incoming event in your own HTTP handlers, and there are SDKs for various languages, including the [Go SDK](https://github.com/cloudevents/sdk-go#receive-your-first-cloudevent).
 
 ## Using with Tekton Triggers
