@@ -1,6 +1,6 @@
 module github.com/gitops-tools/gitpoller-controller
 
-go 1.19
+go 1.21
 
 require (
 	github.com/cloudevents/sdk-go/v2 v2.13.0
