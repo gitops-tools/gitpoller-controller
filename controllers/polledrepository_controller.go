@@ -39,7 +39,9 @@ import (
 
 // EventDispatcher implementations publish the commit to the endpoint in the
 // PolledRepository.
-type EventDispatcher func(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]interface{}) error
+type EventDispatcher interface {
+	Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]interface{}) error
+}
 
 // PolledRepositoryReconciler reconciles a PolledRepository object
 type PolledRepositoryReconciler struct {
@@ -120,8 +122,8 @@ func (r *PolledRepositoryReconciler) poll(ctx context.Context, reqLogger logr.Lo
 		return ctrl.Result{}, err
 	}
 
-	if err := r.EventDispatcher(ctx, repo, commit); err != nil {
-		reqLogger.Error(err, "failed to dispatch commit: %w", err)
+	if err := r.EventDispatcher.Dispatch(ctx, repo, commit); err != nil {
+		reqLogger.Error(err, "failed to dispatch commit")
 		return ctrl.Result{}, err
 	}
 	reqLogger.Info("requeueing next check", "frequency", repo.Spec.Frequency.Duration)

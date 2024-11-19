@@ -54,7 +54,7 @@ var _ = Describe("PolledRepositoryReconciler", func() {
 				Spec: pollingv1alpha1.PolledRepositorySpec{
 					URL:      testRepoURL,
 					Ref:      testRef,
-					Endpoint: "https://github.com/gitops-tools/testing.git",
+					Endpoint: "https://example.com/testing",
 					Type:     pollingv1alpha1.GitHub,
 				},
 			}
@@ -111,12 +111,18 @@ var _ = Describe("PolledRepositoryReconciler", func() {
 						ETag: testCommitETag,
 					},
 				}))
-		})
 
-		It("dispatches a notification", func() {
-			Eventually(func() map[string]interface{} {
-				return nil
-			}, timeout, time.Millisecond*500).Should(Equal(""))
+			It("dispatches a notification", func() {
+				Eventually(func() *dispatch {
+					if len(dispatcher.dispatched) > 0 {
+						return &dispatcher.dispatched[0]
+					}
+					return nil
+				}, timeout, time.Millisecond*500).Should(Equal(&dispatch{
+					endpoint: "https://example.com/testing",
+					commit:   nil,
+				}))
+			})
 		})
 
 		It("passes authentication to the service", func() {
