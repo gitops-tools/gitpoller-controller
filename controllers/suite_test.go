@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitpoller-controller/pkg/cloudevents"
 	"github.com/gitops-tools/gitpoller-controller/pkg/git"
 	"github.com/gitops-tools/gitpoller-controller/pkg/secrets"
 	//+kubebuilder:scaffold:imports
@@ -52,6 +51,7 @@ var (
 	k8sManager   ctrl.Manager
 	requiredAuth string
 	mockPoller   *git.MockPoller
+	dispatcher   *fakeDispatcher
 )
 
 const (
@@ -97,15 +97,17 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient).ToNot(BeNil())
 
 	mockPoller = git.NewMockPoller()
+	dispatcher = &fakeDispatcher{}
+
 	reconciler := &PolledRepositoryReconciler{
-		Client:          k8sClient,
-		Log:             ctrl.Log.WithName("controllers").WithName("PolledRepositoryReconciler"),
-		Scheme:          scheme.Scheme,
-		SecretGetter:    secrets.New(k8sClient),
-		EventDispatcher: cloudevents.Dispatch,
+		Client:       k8sClient,
+		Log:          ctrl.Log.WithName("controllers").WithName("PolledRepositoryReconciler"),
+		Scheme:       scheme.Scheme,
+		SecretGetter: secrets.New(k8sClient),
 		PollerFactory: func(cl *http.Client, repo *pollingv1alpha1.PolledRepository, endpoint, token string) git.CommitPoller {
 			return mockPoller
 		},
+		EventDispatcher: dispatcher,
 	}
 	Expect(reconciler.SetupWithManager(k8sManager)).To(Succeed())
 
@@ -130,4 +132,18 @@ func mustReadFile(t GinkgoTInterface, filename string) []byte {
 		t.Fatal(err)
 	}
 	return d
+}
+
+type fakeDispatcher struct {
+	dispatched []dispatch
+}
+
+func (m *fakeDispatcher) Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]any) error {
+	m.dispatched = append(m.dispatched, dispatch{endpoint: repo.Spec.Endpoint, commit: commit})
+	return nil
+}
+
+type dispatch struct {
+	endpoint string
+	commit   map[string]any
 }
