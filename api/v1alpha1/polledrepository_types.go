@@ -59,6 +59,9 @@ type PolledRepositorySpec struct {
 	// +kubebuilder:validation:Pattern="^(http|https)://"
 	// +required
 	Endpoint string `json:"endpoint"`
+
+	// TODO: Retries...guarantees around delivery?
+	// Errors in delivery will cause rereconciliation?
 }
 
 // AuthSecret references a secret for authenticating the request.

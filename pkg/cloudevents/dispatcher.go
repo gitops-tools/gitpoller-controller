@@ -27,9 +27,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: Maybe switch to an event dispatcher in the style of http.HandlerFunc?
+
+// CloudEventDispatcher dispatches events via CloudEvents.
+type CloudEventDispatcher struct {
+}
+
 // Dispatch sends the commit as a CloudEvent to the Endpoint provided by the
 // repo.
-func Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]interface{}) error {
+func (c CloudEventDispatcher) Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]any) error {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("endpoint", repo.Spec.Endpoint)
 	var useOnceTransport http.RoundTripper = &http.Transport{
 		DisableKeepAlives: true,
@@ -53,11 +59,16 @@ func Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit
 	}
 
 	ctx = cloudevents.ContextWithTarget(ctx, repo.Spec.Endpoint)
-	if result := cloudEventClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
+	result := cloudEventClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event)
+	if !cloudevents.IsACK(result) {
 		return result
 	}
+
 	return nil
 }
+
+// TODO: Change to a CDEvent.
+// https://github.com/cdevents/spec/blob/v0.4.1/spec.md
 
 func makeCloudEvent(repo pollingv1alpha1.PolledRepository, commit map[string]interface{}) (*cloudevents.Event, error) {
 	event := cloudevents.NewEvent()

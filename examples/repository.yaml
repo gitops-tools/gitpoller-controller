@@ -4,7 +4,7 @@ metadata:
   name: polledrepository-sample
   namespace: default
 spec:
-  url: https://github.com/gitops-tools/gitpoller-controller.git
+  url: https://github.com/bigkevmcd/go-demo.git
   ref: main
   type: github
   frequency: 5m

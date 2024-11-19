@@ -45,8 +45,7 @@ func TestNewGitLabPoller(t *testing.T) {
 }
 
 func TestGitLabWithUnknownETag(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, mustReadFile(t, "testdata/gitlab_commit.json"))
+	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", testEtag, mustReadFile(t, "testdata/gitlab_commit.json"))
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -56,8 +55,8 @@ func TestGitLabWithUnknownETag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if polled.ETag != etag {
-		t.Errorf("Poll() ETag got %s, want %s", polled.ETag, etag)
+	if polled.ETag != testEtag {
+		t.Errorf("Poll() ETag got %s, want %s", polled.ETag, testEtag)
 	}
 	if polled.SHA != "ed899a2f4b50b4370feeea94676502b42383c746" {
 		t.Errorf("Poll() SHA got %s, want %s", polled.SHA, "ed899a2f4b50b4370feeea94676502b42383c746")
@@ -68,19 +67,18 @@ func TestGitLabWithUnknownETag(t *testing.T) {
 }
 
 func TestGitLabWithKnownTag(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", testEtag, nil)
 	t.Cleanup(as.Close)
 
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
 
-	polled, body, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	polled, body, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if polled.ETag != etag {
-		t.Fatalf("Poll() got %s, want %s", polled.ETag, etag)
+	if polled.ETag != testEtag {
+		t.Fatalf("Poll() got %s, want %s", polled.ETag, testEtag)
 	}
 	if body != nil {
 		t.Fatalf("expected an empty body, got %#v\n", body)
@@ -88,13 +86,12 @@ func TestGitLabWithKnownTag(t *testing.T) {
 }
 
 func TestGitLabWithNotFoundResponse(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/testing", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/testing", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err.Error() != "server error: 404" {
 		t.Fatal(err)
 	}
@@ -103,13 +100,12 @@ func TestGitLabWithNotFoundResponse(t *testing.T) {
 // It's impossible to distinguish between unknown repo, and bad auth token, both
 // respond with a 404.
 func TestGitLabWithBadAuthentication(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer(testToken, "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(t, testToken, "/api/v4/projects/testing/repo/repository/commits", "master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, "anotherToken")
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err.Error() != "server error: 404" {
 		t.Fatal(err)
 	}
@@ -117,13 +113,12 @@ func TestGitLabWithBadAuthentication(t *testing.T) {
 
 // With no auth-token, no auth header should be sent.
 func TestGitLabWithNoAuthentication(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := makeGitLabAPIServer("", "/api/v4/projects/testing/repo/repository/commits", "master", etag, nil)
+	as := makeGitLabAPIServer(t, "", "/api/v4/projects/testing/repo/repository/commits", "master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitLabPoller(as.Client(), as.URL, "")
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +126,7 @@ func TestGitLabWithNoAuthentication(t *testing.T) {
 
 // makeAPIServer is used during testing to create an HTTP server to return
 // fixtures if the request matches.
-func makeGitLabAPIServer(authToken, wantPath, wantRef, etag string, response []byte) *httptest.Server {
+func makeGitLabAPIServer(t *testing.T, authToken, wantPath, wantRef, etag string, response []byte) *httptest.Server {
 	return httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != wantPath {
 			w.WriteHeader(http.StatusNotFound)
@@ -160,6 +155,8 @@ func makeGitLabAPIServer(authToken, wantPath, wantRef, etag string, response []b
 		}
 		w.Header().Set("ETag", etag)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
+		if _, err := w.Write(response); err != nil {
+			t.Errorf("failed to write response: %s", err)
+		}
 	}))
 }

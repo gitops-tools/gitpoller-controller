@@ -154,7 +154,7 @@ There's an additional `release` target that will generate a file `release-<versi
 
 ## Development
 
-This is an [operator-sdk](https://sdk.operatorframework.io/) derived controller.
+This is a kubebuilder derived controller.
 
 ## Roadmap
 

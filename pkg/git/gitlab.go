@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -48,7 +48,10 @@ func (g GitLabPoller) Poll(ctx context.Context, repo string, pr pollingv1alpha1.
 	logger := logr.FromContextOrDiscard(ctx).WithValues("endpoint", g.endpoint, "repo", repo)
 	requestURL := makeGitLabURL(g.endpoint, repo, pr.Ref)
 	logger.Info("polling GitLab repo", "url", requestURL)
-	req, err := http.NewRequest("GET", requestURL, nil)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return pollingv1alpha1.PollStatus{}, nil, fmt.Errorf("failed to create request for GitLab: %w", err)
+	}
 	if pr.ETag != "" {
 		req.Header.Add("If-None-Match", pr.ETag)
 	}
@@ -70,9 +73,16 @@ func (g GitLabPoller) Poll(ctx context.Context, repo string, pr pollingv1alpha1.
 	if resp.StatusCode == http.StatusNotModified {
 		return pr, nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			logger.Error(err, "closing request body from GitLab")
+		}
+	}()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return pollingv1alpha1.PollStatus{}, nil, fmt.Errorf("reading body from GitLab: %w", err)
+	}
 	var gc []map[string]interface{}
 	err = json.Unmarshal(body, &gc)
 	if err != nil {
@@ -91,8 +101,4 @@ func makeGitLabURL(endpoint, repo, ref string) string {
 	return fmt.Sprintf("%s/api/v4/projects/%s/repository/commits?%s",
 		endpoint, strings.Replace(repo, "/", "%2F", -1),
 		values.Encode())
-}
-
-type gitlabCommit struct {
-	ID string `json:"id"`
 }

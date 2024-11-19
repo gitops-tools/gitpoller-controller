@@ -17,15 +17,18 @@ package git
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitpoller-controller/test"
+	"github.com/gitops-tools/gitpoller-controller/test/utils"
 )
 
-const testToken = "test12345"
+const (
+	testToken string = "test12345"
+	testEtag  string = `W/"878f43039ad0553d0d3122d8bc171b01"`
+)
 
 var _ CommitPoller = (*GitHubPoller)(nil)
 
@@ -46,8 +49,7 @@ func TestNewGitHubPoller(t *testing.T) {
 }
 
 func TestGitHubWithUnknownETag(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, mustReadFile(t, "testdata/github_commit.json"))
+	as := utils.MakeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", testEtag, mustReadFile(t, "testdata/github_commit.json"))
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -57,8 +59,8 @@ func TestGitHubWithUnknownETag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if polled.ETag != etag {
-		t.Errorf("Poll() ETag got %s, want %s", polled.ETag, etag)
+	if polled.ETag != testEtag {
+		t.Errorf("Poll() ETag got %s, want %s", polled.ETag, testEtag)
 	}
 	if polled.SHA != "7638417db6d59f3c431d3e1f261cc637155684cd" {
 		t.Errorf("Poll() SHA got %s, want %s", polled.SHA, "7638417db6d59f3c431d3e1f261cc637155684cd")
@@ -69,19 +71,18 @@ func TestGitHubWithUnknownETag(t *testing.T) {
 }
 
 func TestGitHubWithKnownTag(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
 
-	polled, body, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	polled, body, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if polled.ETag != etag {
-		t.Fatalf("Poll() got %s, want %s", polled.ETag, etag)
+	if polled.ETag != testEtag {
+		t.Fatalf("Poll() got %s, want %s", polled.ETag, testEtag)
 	}
 	if body != nil {
 		t.Fatalf("for unknown tag, got %#v, want nil", body)
@@ -89,13 +90,12 @@ func TestGitHubWithKnownTag(t *testing.T) {
 }
 
 func TestGitHubWithNotFoundResponse(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/testing", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/testing", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err.Error() != "server error: 404" {
 		t.Fatal(err)
 	}
@@ -104,13 +104,12 @@ func TestGitHubWithNotFoundResponse(t *testing.T) {
 // It's impossible to distinguish between unknown repo, and bad auth token, both
 // respond with a 404.
 func TestGitHubWithBadAuthentication(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(t, testToken, "/repos/testing/repo/commits/master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "anotherToken")
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err.Error() != "server error: 404" {
 		t.Fatal(err)
 	}
@@ -118,13 +117,12 @@ func TestGitHubWithBadAuthentication(t *testing.T) {
 
 // With no auth-token, no auth header should be sent.
 func TestGitHubWithNoAuthentication(t *testing.T) {
-	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer("", "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(t, "", "/repos/testing/repo/commits/master", testEtag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "")
 	g.endpoint = as.URL
 
-	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: etag})
+	_, _, err := g.Poll(context.TODO(), "testing/repo", pollingv1alpha1.PollStatus{Ref: "master", ETag: testEtag})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,9 +130,10 @@ func TestGitHubWithNoAuthentication(t *testing.T) {
 
 func mustReadFile(t *testing.T, filename string) []byte {
 	t.Helper()
-	d, err := ioutil.ReadFile(filename)
+	d, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return d
 }

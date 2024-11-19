@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2024.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
+	pollingv1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitpoller-controller/pkg/git"
 	"github.com/gitops-tools/gitpoller-controller/pkg/secrets"
 )
@@ -40,8 +40,10 @@ import (
 // EventDispatcher implementations publish the commit to the endpoint in the
 // PolledRepository.
 type EventDispatcher interface {
-	Dispatch(ctx context.Context, repo pollingv1alpha1.PolledRepository, commit map[string]interface{}) error
+	Dispatch(ctx context.Context, repo pollingv1.PolledRepository, commit map[string]any) error
 }
+
+type pollerFactoryFunc func(cl *http.Client, repo *pollingv1.PolledRepository, endpoint, authToken string) git.CommitPoller
 
 // PolledRepositoryReconciler reconciles a PolledRepository object
 type PolledRepositoryReconciler struct {
@@ -49,26 +51,23 @@ type PolledRepositoryReconciler struct {
 	Log           logr.Logger
 	Scheme        *runtime.Scheme
 	HTTPClient    *http.Client
-	PollerFactory func(cl *http.Client, repo *pollingv1alpha1.PolledRepository, endpoint, authToken string) git.CommitPoller
+	PollerFactory pollerFactoryFunc
 	EventDispatcher
 	secrets.SecretGetter
 }
 
-//+kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories/finalizers,verbs=update
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=polling.gitops.tools,resources=polledrepositories/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *PolledRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logr.FromContextOrDiscard(ctx)
-	reqLogger.Info("reconciling Repository")
-	return r.poll(ctx, reqLogger, req)
-}
+	reqLogger.Info("reconciling PolledRepository")
 
-func (r *PolledRepositoryReconciler) poll(ctx context.Context, reqLogger logr.Logger, req ctrl.Request) (ctrl.Result, error) {
-	repo := pollingv1alpha1.PolledRepository{}
+	repo := pollingv1.PolledRepository{}
 	err := r.Client.Get(ctx, req.NamespacedName, &repo)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -124,8 +123,10 @@ func (r *PolledRepositoryReconciler) poll(ctx context.Context, reqLogger logr.Lo
 
 	if err := r.EventDispatcher.Dispatch(ctx, repo, commit); err != nil {
 		reqLogger.Error(err, "failed to dispatch commit")
+		// TODO: improve the error
 		return ctrl.Result{}, err
 	}
+
 	reqLogger.Info("requeueing next check", "frequency", repo.Spec.Frequency.Duration)
 	return ctrl.Result{RequeueAfter: repo.Spec.Frequency.Duration}, nil
 }
@@ -133,12 +134,12 @@ func (r *PolledRepositoryReconciler) poll(ctx context.Context, reqLogger logr.Lo
 // SetupWithManager sets up the controller with the Manager.
 func (r *PolledRepositoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&pollingv1alpha1.PolledRepository{}).
+		For(&pollingv1.PolledRepository{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 
-func (r *PolledRepositoryReconciler) authTokenForRepo(ctx context.Context, logger logr.Logger, namespace string, repo pollingv1alpha1.PolledRepository) (string, error) {
+func (r *PolledRepositoryReconciler) authTokenForRepo(ctx context.Context, logger logr.Logger, namespace string, repo pollingv1.PolledRepository) (string, error) {
 	if repo.Spec.Auth == nil {
 		return "", nil
 	}
@@ -170,11 +171,11 @@ func repoFromURL(s string) (string, string, error) {
 // MakeCommitPoller creates the correct poller from the repository with
 // authentication.
 // TODO: allow custom TLS
-func MakeCommitPoller(cl *http.Client, repo *pollingv1alpha1.PolledRepository, endpoint, authToken string) git.CommitPoller {
+func MakeCommitPoller(cl *http.Client, repo *pollingv1.PolledRepository, endpoint, authToken string) git.CommitPoller {
 	switch repo.Spec.Type {
-	case pollingv1alpha1.GitHub:
+	case pollingv1.GitHub:
 		return git.NewGitHubPoller(cl, endpoint, authToken)
-	case pollingv1alpha1.GitLab:
+	case pollingv1.GitLab:
 		return git.NewGitLabPoller(cl, endpoint, authToken)
 	}
 	return nil

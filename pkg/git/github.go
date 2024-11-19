@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -53,7 +53,11 @@ func (g GitHubPoller) Poll(ctx context.Context, repo string, pr pollingv1alpha1.
 		return pollingv1alpha1.PollStatus{}, nil, fmt.Errorf("failed to make the request URL: %w", err)
 	}
 	logger.Info("polling GitHub repo", "url", requestURL)
-	req, err := http.NewRequest("GET", requestURL, nil)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return pollingv1alpha1.PollStatus{}, nil, fmt.Errorf("failed to create request for GitHub: %w", err)
+	}
+
 	if pr.ETag != "" {
 		req.Header.Add("If-None-Match", pr.ETag)
 	}
@@ -75,9 +79,16 @@ func (g GitHubPoller) Poll(ctx context.Context, repo string, pr pollingv1alpha1.
 	if resp.StatusCode == http.StatusNotModified {
 		return pr, nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			logger.Error(err, "closing request body from GitHub")
+		}
+	}()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return pollingv1alpha1.PollStatus{}, nil, fmt.Errorf("reading body from GitHub: %w", err)
+	}
 	var gc map[string]interface{}
 	err = json.Unmarshal(body, &gc)
 	if err != nil {
@@ -94,9 +105,6 @@ func makeGitHubURL(endpoint, repo, ref string) (string, error) {
 		return "", err
 	}
 	parsed.Path = path.Join("repos", repo, "commits", ref)
-	return parsed.String(), nil
-}
 
-type githubCommit struct {
-	SHA string `json:"sha"`
+	return parsed.String(), nil
 }

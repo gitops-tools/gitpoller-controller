@@ -18,7 +18,7 @@ package cloudevents
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,7 +59,7 @@ func TestDispatch(t *testing.T) {
 		},
 	}
 
-	err := Dispatch(context.TODO(), repo, event)
+	err := CloudEventDispatcher{}.Dispatch(context.TODO(), repo, event)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestDispatch_handle_non_200_response(t *testing.T) {
 		},
 	}
 
-	err := Dispatch(context.TODO(), repo, event)
+	err := CloudEventDispatcher{}.Dispatch(context.TODO(), repo, event)
 	if err == nil {
 		t.Fatal("expected an error response from an internal server error")
 	}
@@ -98,7 +98,7 @@ func TestDispatch_handle_non_200_response(t *testing.T) {
 
 func assertJSONRequest(t *testing.T, req *http.Request, want map[string]interface{}) {
 	t.Helper()
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
