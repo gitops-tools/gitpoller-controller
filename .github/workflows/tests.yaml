@@ -1,4 +1,4 @@
-name: CI
+name: Integration
 
 on:
   push:
@@ -23,12 +23,6 @@ jobs:
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
-      - name: Configure git for private modules
-        env:
-          GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
-          GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
-        run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
-
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -41,16 +35,6 @@ jobs:
       - name: Test
         run: make test
 
-  build-docs:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read # for actions/checkout to fetch code
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0 # for git describe
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
   build:
     runs-on: ubuntu-latest
     permissions:
