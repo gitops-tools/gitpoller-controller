@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2024.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,25 +22,27 @@ import (
 	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
 )
 
-var _ CommitPoller = (*MockPoller)(nil)
+var _ CommitPoller = (*FakePoller)(nil)
 
-// NewMockPoller creates and returns a new mock Git poller.
-func NewMockPoller() *MockPoller {
-	return &MockPoller{
+// NewFakePoller creates and returns a new fake Git poller.
+func NewFakePoller() *FakePoller {
+	return &FakePoller{
 		responses: make(map[string]pollingv1alpha1.PollStatus),
 		commits:   make(map[string]Commit),
 	}
 }
 
-// MockPoller is a mock Git poller.
-type MockPoller struct {
+// FakePoller is a fake Git poller.
+//
+// It can be configured with responses and errors.
+type FakePoller struct {
 	pollError error
 	responses map[string]pollingv1alpha1.PollStatus
 	commits   map[string]Commit
 }
 
 // Poll is an implementation of the CommitPoller interface.
-func (m *MockPoller) Poll(ctx context.Context, repo string, ps pollingv1alpha1.PollStatus) (pollingv1alpha1.PollStatus, Commit, error) {
+func (m *FakePoller) Poll(ctx context.Context, repo string, ps pollingv1alpha1.PollStatus) (pollingv1alpha1.PollStatus, Commit, error) {
 	if m.pollError != nil {
 		return pollingv1alpha1.PollStatus{}, nil, m.pollError
 	}
@@ -48,22 +50,15 @@ func (m *MockPoller) Poll(ctx context.Context, repo string, ps pollingv1alpha1.P
 	return m.responses[k], m.commits[k], nil
 }
 
-// AddMockResponse sets up the response for a Poll call.
-func (m *MockPoller) AddMockResponse(repo string, in pollingv1alpha1.PollStatus, c Commit, out pollingv1alpha1.PollStatus) {
+// AddFakeResponse sets up the response for a Poll call.
+func (m *FakePoller) AddFakeResponse(repo string, in pollingv1alpha1.PollStatus, c Commit, out pollingv1alpha1.PollStatus) {
 	k := mockKey(repo, in)
 	m.responses[k] = out
 	m.commits[k] = c
 }
 
-// Reset clears the setup.
-func (m *MockPoller) Reset() {
-	m.responses = make(map[string]pollingv1alpha1.PollStatus)
-	m.commits = make(map[string]Commit)
-	m.pollError = nil
-}
-
 // FailWithError configures the poller to return errors.
-func (m *MockPoller) FailWithError(err error) {
+func (m *FakePoller) FailWithError(err error) {
 	m.pollError = err
 }
 

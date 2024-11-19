@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	pollingv1alpha1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitpoller-controller/test"
+	"github.com/gitops-tools/gitpoller-controller/test/utils"
 )
 
 const testToken = "test12345"
@@ -47,7 +47,7 @@ func TestNewGitHubPoller(t *testing.T) {
 
 func TestGitHubWithUnknownETag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, mustReadFile(t, "testdata/github_commit.json"))
+	as := utils.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, mustReadFile(t, "testdata/github_commit.json"))
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -70,7 +70,7 @@ func TestGitHubWithUnknownETag(t *testing.T) {
 
 func TestGitHubWithKnownTag(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -90,7 +90,7 @@ func TestGitHubWithKnownTag(t *testing.T) {
 
 func TestGitHubWithNotFoundResponse(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, testToken)
 	g.endpoint = as.URL
@@ -105,7 +105,7 @@ func TestGitHubWithNotFoundResponse(t *testing.T) {
 // respond with a 404.
 func TestGitHubWithBadAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer(testToken, "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "anotherToken")
 	g.endpoint = as.URL
@@ -119,7 +119,7 @@ func TestGitHubWithBadAuthentication(t *testing.T) {
 // With no auth-token, no auth header should be sent.
 func TestGitHubWithNoAuthentication(t *testing.T) {
 	etag := `W/"878f43039ad0553d0d3122d8bc171b01"`
-	as := test.MakeGitHubAPIServer("", "/repos/testing/repo/commits/master", etag, nil)
+	as := utils.MakeGitHubAPIServer("", "/repos/testing/repo/commits/master", etag, nil)
 	t.Cleanup(as.Close)
 	g := NewGitHubPoller(as.Client(), as.URL, "")
 	g.endpoint = as.URL
