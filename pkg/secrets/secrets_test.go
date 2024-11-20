@@ -46,7 +46,7 @@ func TestSecretTokenWithMissingKey(t *testing.T) {
 	g := New(fake.NewFakeClient(createSecret(testID, "secret-token")))
 
 	_, err := g.SecretToken(context.TODO(), testID, "unknown")
-	if err.Error() != `secret invalid, no "unknown" key in test-ns/test-secret` {
+	if err.Error() != `secret invalid, no key "unknown" in test-ns/test-secret` {
 		t.Fatal(err)
 	}
 }

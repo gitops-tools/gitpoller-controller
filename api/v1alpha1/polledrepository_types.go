@@ -65,13 +65,11 @@ type PolledRepositorySpec struct {
 }
 
 // AuthSecret references a secret for authenticating the request.
-// TODO: This should use a LocalObjectReference, and not allow the secret
-// reference to go across namespaces.
 type AuthSecret struct {
 	// This is a local reference to the named secret to fetch.
 	// This secret is expected to have a "token" key with a valid GitHub/GitLab
 	// auth token.
-	corev1.SecretReference `json:"secretRef,omitempty"`
+	SecretRef corev1.LocalObjectReference `json:"secretRef,omitempty"`
 	//+kubebuilder:default:="token"
 	Key string `json:"key,omitempty"`
 }

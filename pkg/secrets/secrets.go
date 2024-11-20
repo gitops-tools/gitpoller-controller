@@ -46,7 +46,7 @@ func (k KubeSecretGetter) SecretToken(ctx context.Context, id types.NamespacedNa
 	}
 	token, ok := loaded.Data[key]
 	if !ok {
-		return "", fmt.Errorf("secret invalid, no %#v key in %s/%s", key, id.Namespace, id.Name)
+		return "", fmt.Errorf("secret invalid, no key %q in %s", key, id)
 	}
 	return string(token), nil
 }

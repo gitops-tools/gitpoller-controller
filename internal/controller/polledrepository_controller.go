@@ -85,7 +85,8 @@ func (r *PolledRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	authToken, err := r.authTokenForRepo(ctx, reqLogger, req.Namespace, repo)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed to get auth token")
+		reqLogger.Error(err, "Getting the auth token failed")
+		return reconcile.Result{}, fmt.Errorf("failed to get auth token: %w", err)
 	}
 
 	// TODO: handle pollerFactory returning nil/error
@@ -117,14 +118,12 @@ func (r *PolledRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	repo.Status.PollStatus = newStatus
 	if err := r.Client.Status().Update(ctx, &repo); err != nil {
 		reqLogger.Error(err, "unable to update Repository status")
-		// TODO: improve the error
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to update status after change detected: %w", err)
 	}
 
 	if err := r.EventDispatcher.Dispatch(ctx, repo, commit); err != nil {
 		reqLogger.Error(err, "failed to dispatch commit")
-		// TODO: improve the error
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to send notification to %q: %w", repo.Spec.Endpoint, err)
 	}
 
 	reqLogger.Info("requeueing next check", "frequency", repo.Spec.Frequency.Duration)
@@ -147,9 +146,8 @@ func (r *PolledRepositoryReconciler) authTokenForRepo(ctx context.Context, logge
 	if repo.Spec.Auth.Key != "" {
 		key = repo.Spec.Auth.Key
 	}
-	authToken, err := r.SecretGetter.SecretToken(ctx, types.NamespacedName{Name: repo.Spec.Auth.Name, Namespace: namespace}, key)
+	authToken, err := r.SecretGetter.SecretToken(ctx, types.NamespacedName{Name: repo.Spec.Auth.SecretRef.Name, Namespace: namespace}, key)
 	if err != nil {
-		logger.Error(err, "Getting the auth token failed", "name", repo.Spec.Auth.Name, "namespace", namespace, "key", key)
 		return "", err
 	}
 
@@ -159,13 +157,16 @@ func (r *PolledRepositoryReconciler) authTokenForRepo(ctx context.Context, logge
 func repoFromURL(s string) (string, string, error) {
 	parsed, err := url.Parse(s)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse repo from URL %#v: %s", s, err)
+		return "", "", fmt.Errorf("failed to parse repo from URL %s: %s", s, err)
 	}
 	host := parsed.Host
 	if strings.HasSuffix(host, "github.com") {
 		host = "api." + host
 	}
+
+	// TODO: This should create a new URL with scheme and host?
 	endpoint := fmt.Sprintf("%s://%s", parsed.Scheme, host)
+
 	return strings.TrimPrefix(strings.TrimSuffix(parsed.Path, ".git"), "/"), endpoint, nil
 }
 

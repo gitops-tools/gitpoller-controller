@@ -225,7 +225,7 @@ func TestReconciliation(t *testing.T) {
 func withSecretRef(s *corev1.Secret) func(*pollingv1.PolledRepository) {
 	return func(r *pollingv1.PolledRepository) {
 		r.Spec.Auth = &pollingv1.AuthSecret{
-			SecretReference: corev1.SecretReference{
+			SecretRef: corev1.LocalObjectReference{
 				Name: s.Name,
 			},
 		}
