@@ -25,10 +25,13 @@ import (
 	"github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
 	pollingv1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitpoller-controller/pkg/git"
+	"github.com/gitops-tools/gitpoller-controller/pkg/secrets"
 	"github.com/gitops-tools/gitpoller-controller/test/utils"
 	"github.com/google/go-cmp/cmp"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -45,6 +48,7 @@ const (
 
 func TestReconciliation(t *testing.T) {
 	scheme := runtime.NewScheme()
+	utils.AssertNoError(t, clientgoscheme.AddToScheme(scheme))
 	utils.AssertNoError(t, pollingv1.AddToScheme(scheme))
 
 	t.Run("polling a github repository", func(t *testing.T) {
@@ -166,9 +170,69 @@ func TestReconciliation(t *testing.T) {
 			t.Errorf("updated repository status when no change:\n%s", diff)
 		}
 	})
+
+	t.Run("passes through authentication", func(t *testing.T) {
+		wantToken := "abc123"
+		secret := utils.NewSecret(map[string]string{"token": wantToken})
+
+		repository := newPolledRepository(withSecretRef(secret))
+		repositoryKey := client.ObjectKeyFromObject(repository)
+		k8sClient := newFakeClient(scheme, repository, secret)
+		mockPoller := git.NewFakePoller()
+		dispatcher := &mockDispatcher{}
+		reconciler := &PolledRepositoryReconciler{
+			Client: k8sClient,
+			Scheme: scheme,
+			PollerFactory: func(cl *http.Client, repo *pollingv1.PolledRepository, endpoint, token string) git.CommitPoller {
+				if token != wantToken {
+					t.Fatal("did not pass in a token")
+				}
+				return mockPoller
+			},
+			SecretGetter:    secrets.New(k8sClient),
+			EventDispatcher: dispatcher,
+		}
+
+		completeStatus := pollingv1.PollStatus{
+			Ref:  testRef,
+			SHA:  testCommitSHA,
+			ETag: testCommitETag,
+		}
+		responseBody := map[string]interface{}{"id": testRef}
+
+		// The poll status here is empty.
+		mockPoller.AddFakeResponse("bigkevmcd/go-demo",
+			pollingv1.PollStatus{Ref: testRef},
+			responseBody,
+			completeStatus)
+
+		mockPoller.AddFakeResponse("bigkevmcd/go-demo",
+			completeStatus,
+			responseBody,
+			completeStatus)
+
+		result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: repositoryKey})
+		utils.AssertNoError(t, err)
+
+		want := ctrl.Result{RequeueAfter: time.Minute * 5}
+		if diff := cmp.Diff(want, result); diff != "" {
+			t.Errorf("incorrect result:\n%s", diff)
+		}
+	})
+
 }
 
-func newPolledRepository() *pollingv1.PolledRepository {
+func withSecretRef(s *corev1.Secret) func(*pollingv1.PolledRepository) {
+	return func(r *pollingv1.PolledRepository) {
+		r.Spec.Auth = &pollingv1.AuthSecret{
+			SecretReference: corev1.SecretReference{
+				Name: s.Name,
+			},
+		}
+	}
+}
+
+func newPolledRepository(opts ...func(*pollingv1.PolledRepository)) *pollingv1.PolledRepository {
 	repo := &pollingv1.PolledRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testRepositoryName,
@@ -182,6 +246,10 @@ func newPolledRepository() *pollingv1.PolledRepository {
 			Frequency: &metav1.Duration{Duration: time.Minute * 5},
 		},
 	}
+	for _, opt := range opts {
+		opt(repo)
+	}
+
 	return repo
 }
 

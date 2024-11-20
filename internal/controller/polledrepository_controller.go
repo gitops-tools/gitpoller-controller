@@ -152,6 +152,7 @@ func (r *PolledRepositoryReconciler) authTokenForRepo(ctx context.Context, logge
 		logger.Error(err, "Getting the auth token failed", "name", repo.Spec.Auth.Name, "namespace", namespace, "key", key)
 		return "", err
 	}
+
 	return authToken, nil
 }
 
