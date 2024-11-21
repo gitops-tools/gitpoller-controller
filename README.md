@@ -152,6 +152,115 @@ $ IMG=my-org/my-image:tag make deploy
 
 There's an additional `release` target that will generate a file `release-<version>.yaml` which contains all the necessary files to deploy your controller.
 
+## Examples of the Cloud Event Body
+
+## GitHub
+
+```json
+{
+  "author": {
+    "avatar_url": "https://avatars.githubusercontent.com/u/867746?v=4",
+    "events_url": "https://api.github.com/users/example/events{/privacy}",
+    "followers_url": "https://api.github.com/users/example/followers",
+    "following_url": "https://api.github.com/users/example/following{/other_user}",
+    "gists_url": "https://api.github.com/users/example/gists{/gist_id}",
+    "gravatar_id": "",
+    "html_url": "https://github.com/example",
+    "id": 867746,
+    "login": "example",
+    "node_id": "MDQ6VXNlcjg2Nzc0Ng==",
+    "organizations_url": "https://api.github.com/users/example/orgs",
+    "received_events_url": "https://api.github.com/users/example/received_events",
+    "repos_url": "https://api.github.com/users/example/repos",
+    "site_admin": false,
+    "starred_url": "https://api.github.com/users/example/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/example/subscriptions",
+    "type": "User",
+    "url": "https://api.github.com/users/example",
+    "user_view_type": "public"
+  },
+  "comments_url": "https://api.github.com/repos/example/repo/commits/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384/comments",
+  "commit": {
+    "author": {
+      "date": "2023-12-15T09:35:55Z",
+      "email": "example@gmail.com",
+      "name": "Kevin McDermott"
+    },
+    "comment_count": 0,
+    "committer": {
+      "date": "2023-12-15T09:35:55Z",
+      "email": "noreply@github.com",
+      "name": "GitHub"
+    },
+    "message": "Update kustomization.yaml",
+    "tree": {
+      "sha": "bb194c136b49ab0cd44a06e51d3ed5c8c32b7d39",
+      "url": "https://api.github.com/repos/example/repo/git/trees/bb194c136b49ab0cd44a06e51d3ed5c8c32b7d39"
+    },
+    "url": "https://api.github.com/repos/example/repo/git/commits/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384",
+    "verification": {
+      "payload": "tree bb194c136b49ab0cd44a06e51d3ed5c8c32b7d39\nparent 72c6f14b1be29dd6cc80a722018165a0e10ff378\nauthor Example User <example@example.com> 1702632955 +0000\ncommitter GitHub <noreply@github.com> 1702632955 +0000\n\nUpdate kustomization.yaml",
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJlfB37CRBK7hj4Ov3rIwAAVSsIAJoFQvKj76XKhSt90JGl2D+L\nlNtr1+t4u7AMUwtFQRyAdjgPXZ+Z6r/4echXWHTKtBuNAhpbyXjWnY1BIaqN1xm/\n4BSILbA4VTmoQ9ICATdlzoxNOmO5xineSCFth/bMguZpfoNkoJIoIMBzU1wDZP7L\nruC4I4lc4JaD1SqNvdBSLt3cq3aT3iTqdFjP6CTNN+g0C3WlL+8BfYZoWOvVywDD\nxDkBm/ApMuzEE0YGGyyJcZ8k9r+1pNq2g2qblab1zZKrdcKls48OvyWIQoWwcX5Z\nskTrg/wsXI1lI9EBH3ooIyrWvutWLUxaVoar3kAl9EghobTJPhEHlRCtkqmRcaI=\n=WJHF\n-----END PGP SIGNATURE-----\n",
+      "verified": true,
+      "verified_at": "2024-01-16T19:59:59Z"
+    }
+  },
+  "committer": {
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "gravatar_id": "",
+    "html_url": "https://github.com/web-flow",
+    "id": 19864447,
+    "login": "web-flow",
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "site_admin": false,
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "type": "User",
+    "url": "https://api.github.com/users/web-flow",
+    "user_view_type": "public"
+  },
+  "files": [
+    {
+      "additions": 1,
+      "blob_url": "https://github.com/example/repo/blob/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384/examples%2Fkustomize%2Fenvironments%2Fstaging%2Fkustomization.yaml",
+      "changes": 8,
+      "contents_url": "https://api.github.com/repos/example/repo/contents/examples%2Fkustomize%2Fenvironments%2Fstaging%2Fkustomization.yaml?ref=0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384",
+      "deletions": 7,
+      "filename": "examples/kustomize/environments/staging/kustomization.yaml",
+      "patch": "@@ -1,13 +1,7 @@\n namespace: staging\n images:\n - name: example/repo\n-  newTag: demo\n-apiVersion: kustomize.config.k8s.io/v1beta1\n-kind: Kustomization\n+  newTag: v1.2.3\n resources:\n - ../../base\n - namespace.yaml\n-labels:\n-- includeSelectors: true\n-  pairs:\n-    gitops.pro/pipeline-environment: staging",
+      "raw_url": "https://github.com/example/repo/raw/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384/examples%2Fkustomize%2Fenvironments%2Fstaging%2Fkustomization.yaml",
+      "sha": "5f136971df5821e8c39dd3515cae156ffc8887ad",
+      "status": "modified"
+    }
+  ],
+  "html_url": "https://github.com/example/repo/commit/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384",
+  "node_id": "C_kwDOEAWX1doAKDA0NjljOWI0YTlmZGJlYzVmZTdhMDYwMDBiYTBjNWRhZDk5YjAzODQ",
+  "parents": [
+    {
+      "html_url": "https://github.com/example/repo/commit/72c6f14b1be29dd6cc80a722018165a0e10ff378",
+      "sha": "72c6f14b1be29dd6cc80a722018165a0e10ff378",
+      "url": "https://api.github.com/repos/example/repo/commits/72c6f14b1be29dd6cc80a722018165a0e10ff378"
+    }
+  ],
+  "sha": "0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384",
+  "stats": {
+    "additions": 1,
+    "deletions": 7,
+    "total": 8
+  },
+  "url": "https://api.github.com/repos/example/repo/commits/0469c9b4a9fdbec5fe7a06000ba0c5dad99b0384"
+}
+```
+
+
 ## Development
 
 This is a kubebuilder derived controller.
@@ -162,3 +271,4 @@ This is a kubebuilder derived controller.
  - [ ] Support generic Git repository polling
  - [ ] Allow more generic HTTP event sending (cloud-events don't appear to allow signing)
  - [ ] Support for custom TLS CAs in the client
+ - [ ] Support for [CDEvents](https://cdevents.dev/) if possible

@@ -30,7 +30,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	pollingv1 "github.com/gitops-tools/gitpoller-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitpoller-controller/pkg/git"
@@ -64,6 +63,7 @@ type PolledRepositoryReconciler struct {
 // Reconcile is part of the main Kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *PolledRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+
 	reqLogger := logr.FromContextOrDiscard(ctx)
 	reqLogger.Info("reconciling PolledRepository")
 
@@ -85,13 +85,20 @@ func (r *PolledRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	authToken, err := r.authTokenForRepo(ctx, reqLogger, req.Namespace, repo)
 	if err != nil {
+		// TODO: Patch this!
+		repo.Status.LastError = err.Error()
 		reqLogger.Error(err, "Getting the auth token failed")
-		return reconcile.Result{}, fmt.Errorf("failed to get auth token: %w", err)
+		if err := r.Client.Status().Update(ctx, &repo); err != nil {
+			reqLogger.Error(err, "unable to update Repository status")
+		}
+		// TODO: improve the error
+		return ctrl.Result{}, err
 	}
 
 	// TODO: handle pollerFactory returning nil/error
 	newStatus, commit, err := r.PollerFactory(r.HTTPClient, &repo, endpoint, authToken).Poll(ctx, repoName, repo.Status.PollStatus)
 	if err != nil {
+		// TODO: Patch this!
 		repo.Status.LastError = err.Error()
 		reqLogger.Error(err, "repository poll failed")
 		if err := r.Client.Status().Update(ctx, &repo); err != nil {
